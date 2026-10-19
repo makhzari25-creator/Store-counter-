@@ -70,6 +70,7 @@ class Pipeline(threading.Thread):
         conf = self.cfg.snapshot()
         engine = CountingEngine(conf)
         src = str(conf["source"])
+        db = self.db.for_source(src)          # demo data never touches the real database
         scene = cap = None
         if src == "demo":
             scene = SyntheticScene(seed=int(time.time()) % 1000)
@@ -107,13 +108,13 @@ class Pipeline(threading.Thread):
 
                 dets = detector.detect(frame)
                 for ev in engine.process(frame, dets, last_proc):
-                    self.db.add_event(ev["direction"], ev["green_bag"], ev["track_id"])
+                    db.add_event(ev["direction"], ev["green_bag"], ev["track_id"])
                     self.log(f"[event] {ev['direction']} bag={ev['green_bag']}")
 
                 vis = engine.visible()
                 self._publish(frame, engine, vis)
                 if last_proc - last_snap >= conf["snapshot_interval"]:
-                    self.db.add_snapshot(self.db.get_inside(), len(vis))
+                    db.add_snapshot(db.get_inside(), len(vis))
                     last_snap = last_proc
 
                 fps_n += 1

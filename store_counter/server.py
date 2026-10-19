@@ -24,6 +24,29 @@ def create_app(cfg, db, pipeline):
             return None
         return Response("login required", 401, {"WWW-Authenticate": 'Basic realm="Store Counter"'})
 
+    LOOPBACK = {"127.0.0.1", "localhost", "[::1]", "::1"}
+
+    @app.before_request
+    def _csrf_guard():
+        """Block cross-site requests (CSRF) and DNS-rebinding against the local panel."""
+        # DNS rebinding: when bound to loopback only accept loopback host names
+        if cfg["host"] in LOOPBACK:
+            host = request.host.rsplit(":", 1)[0] if not request.host.startswith("[") \
+                else request.host.split("]")[0] + "]"
+            if host not in LOOPBACK:
+                return Response("bad host", 403)
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            origin = request.headers.get("Origin")
+            if origin:
+                from urllib.parse import urlparse
+                if urlparse(origin).netloc != request.host:
+                    return Response("cross-site request blocked", 403)
+            # A cross-site page cannot send application/json without a CORS preflight
+            # (which this server never approves), so requiring it stops "simple" form posts.
+            if not request.is_json:
+                return Response("Content-Type must be application/json", 415)
+        return None
+
     @app.get("/")
     def index():
         return send_from_directory(web_dir(), "index.html")
@@ -89,7 +112,7 @@ def create_app(cfg, db, pipeline):
 
     @app.post("/api/config")
     def set_config():
-        body = request.get_json(force=True, silent=True) or {}
+        body = request.get_json(silent=True) or {}
         for k in ("admin_password", "data_dir", "host", "port", "model_path"):
             body.pop(k, None)               # not editable from the browser
         try:

@@ -170,3 +170,24 @@ class Database:
         totals["peak"] = max((b["peak"] for b in rows), default=0)
         return {"period": period, "start": s, "end": e, "title": title,
                 "rows": rows, "totals": totals}
+
+
+class DbSwitch:
+    """Keeps demo-mode data out of the real database.
+
+    Real camera -> counter.db. Source "demo" -> demo.db, which is wiped on every start.
+    Everything not defined here is forwarded to the database matching the CURRENT source,
+    so the panel always shows the data of the mode that is active."""
+
+    def __init__(self, real: Database, demo: Database, cfg):
+        self.real, self.demo, self.cfg = real, demo, cfg
+
+    def for_source(self, source) -> Database:
+        return self.demo if str(source) == "demo" else self.real
+
+    def __getattr__(self, name):                 # only called for attributes not found normally
+        return getattr(self.for_source(self.cfg["source"]), name)
+
+    def close(self):
+        self.real.close()
+        self.demo.close()

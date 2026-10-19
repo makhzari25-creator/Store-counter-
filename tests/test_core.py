@@ -10,7 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from store_counter import jalali                       # noqa: E402
 from store_counter.config import DEFAULTS, Config      # noqa: E402
-from store_counter.db import Database                  # noqa: E402
+from store_counter.db import Database, DbSwitch        # noqa: E402
+from store_counter.server import create_app            # noqa: E402
 from store_counter.demo import DemoDetector, SyntheticScene   # noqa: E402
 from store_counter.detectors import YoloOnnxDetector   # noqa: E402
 from store_counter.engine import CountingEngine        # noqa: E402
@@ -129,6 +130,72 @@ class YoloDecodeTests(unittest.TestCase):
         self.assertAlmostEqual(x2, (370) / 0.5, delta=2)
         self.assertAlmostEqual(y1, (220 - 140) / 0.5, delta=2)
         self.assertAlmostEqual(y2, (420 - 140) / 0.5, delta=2)
+
+
+class DemoIsolationTests(unittest.TestCase):
+    def test_demo_events_never_reach_real_db(self):
+        tmp = tempfile.mkdtemp()
+        cfg = Config(os.path.join(tmp, "c.json"))            # default source = demo
+        real = Database(os.path.join(tmp, "real.db"))
+        demo = Database(os.path.join(tmp, "demo.db"))
+        sw = DbSwitch(real, demo, cfg)
+        sw.for_source("demo").add_event("in", True)
+        self.assertEqual(sw.summary(dt.date.today().isoformat())["in"], 1)   # panel shows demo
+        cfg.update({"source": "rtsp://cam/stream"})
+        self.assertEqual(sw.summary(dt.date.today().isoformat())["in"], 0)   # real db is clean
+        self.assertEqual(real.summary(dt.date.today().isoformat())["in"], 0)
+        sw.close()
+
+
+class _FakePipeline:
+    def status(self):
+        return {}
+
+    def reload(self):
+        pass
+
+
+class CsrfTests(unittest.TestCase):
+    def setUp(self):
+        tmp = tempfile.mkdtemp()
+        self.cfg = Config(os.path.join(tmp, "c.json"))
+        self.db = Database(os.path.join(tmp, "t.db"))
+        self.client = create_app(self.cfg, self.db, _FakePipeline()).test_client()
+
+    def tearDown(self):
+        self.db.close()
+
+    def test_normal_json_post_works(self):
+        r = self.client.post("/api/config", json={"conf": 0.5})
+        self.assertEqual(r.status_code, 200)
+
+    def test_cross_site_origin_blocked(self):
+        r = self.client.post("/api/config", json={"conf": 0.9},
+                             headers={"Origin": "http://evil.example"})
+        self.assertEqual(r.status_code, 403)
+        self.assertNotEqual(self.cfg["conf"], 0.9)
+
+    def test_same_origin_allowed(self):
+        r = self.client.post("/api/config", json={"conf": 0.4},
+                             headers={"Origin": "http://localhost"})
+        self.assertEqual(r.status_code, 200)
+
+    def test_form_post_without_json_rejected(self):
+        r = self.client.post("/api/reset_inside", data="value=0",
+                             content_type="text/plain")
+        self.assertEqual(r.status_code, 415)
+        r = self.client.post("/api/reset_inside", data={"value": 0})
+        self.assertEqual(r.status_code, 415)
+
+    def test_dns_rebinding_host_blocked(self):
+        r = self.client.get("/api/live", headers={"Host": "evil.example:8080"})
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.client.get("/api/live", headers={"Host": "127.0.0.1:8080"}).status_code, 200)
+
+    def test_lan_mode_does_not_restrict_host(self):
+        self.cfg.data["host"] = "0.0.0.0"
+        r = self.client.get("/api/live", headers={"Host": "192.168.1.20:8080"})
+        self.assertEqual(r.status_code, 200)
 
 
 if __name__ == "__main__":

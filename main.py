@@ -6,7 +6,7 @@ import time
 import webbrowser
 
 from store_counter.config import Config
-from store_counter.db import Database
+from store_counter.db import Database, DbSwitch
 from store_counter.pipeline import Pipeline
 from store_counter.server import create_app
 
@@ -15,7 +15,12 @@ def main():
     cfg = Config()
     data_dir = cfg.resolve(cfg["data_dir"])
     os.makedirs(data_dir, exist_ok=True)
-    db = Database(os.path.join(data_dir, "counter.db"), cfg["reset_inside_daily"])
+    real_db = Database(os.path.join(data_dir, "counter.db"), cfg["reset_inside_daily"])
+    demo_path = os.path.join(data_dir, "demo.db")
+    for suffix in ("", "-wal", "-shm"):          # demo data is throw-away: start clean
+        if os.path.exists(demo_path + suffix):
+            os.remove(demo_path + suffix)
+    db = DbSwitch(real_db, Database(demo_path, cfg["reset_inside_daily"]), cfg)
 
     pipe = Pipeline(cfg, db)
     pipe.start()
