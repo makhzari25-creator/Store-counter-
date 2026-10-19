@@ -1,0 +1,31 @@
+{
+  "source": "demo",
+  "host": "127.0.0.1",
+  "port": 8080,
+  "admin_password": "",
+  "open_browser": true,
+  "data_dir": "data",
+  "model_path": "models/yolov8n.onnx",
+  "detector": "auto",
+  "conf": 0.35,
+  "imgsz": 640,
+  "process_fps": 10,
+  "line": {
+    "x1": 0.0,
+    "y1": 0.5,
+    "x2": 1.0,
+    "y2": 0.5
+  },
+  "invert_direction": false,
+  "min_track_hits": 3,
+  "green": {
+    "h_min": 35,
+    "h_max": 85,
+    "s_min": 90,
+    "v_min": 60,
+    "min_ratio": 0.04,
+    "min_frame_fraction": 0.25
+  },
+  "reset_inside_daily": true,
+  "snapshot_interval": 60
+}

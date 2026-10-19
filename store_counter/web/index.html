@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پنل شمارش مشتریان</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#1c2430;--mut:#6b7686;--line:#e3e8ef;
+--in:#2f6fed;--out:#f08a24;--bag:#1f9d55;--bad:#d64545;--brand:#14213d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 Tahoma,"Segoe UI",sans-serif}
+header{background:var(--brand);color:#fff;padding:12px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header h1{font-size:18px;margin:0;flex:1}
+nav button{background:transparent;border:0;color:#cfd7e6;font:inherit;padding:8px 16px;cursor:pointer;border-radius:8px}
+nav button.on{background:#fff;color:var(--brand);font-weight:bold}
+main{max-width:1180px;margin:18px auto;padding:0 14px}
+.tab{display:none}.tab.on{display:block}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.stat .v{font-size:34px;font-weight:bold;line-height:1.2}
+.stat .l{color:var(--mut);font-size:13px}
+.big .v{font-size:56px}
+.row{display:grid;gap:12px;grid-template-columns:minmax(0,3fr) minmax(0,2fr);margin-top:12px}
+@media(max-width:820px){.row{grid-template-columns:1fr}}
+.video{background:#000;border-radius:10px;overflow:hidden;min-height:180px}
+.video img{width:100%;display:block}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center}
+th{color:var(--mut);font-weight:normal;background:#fafbfd;position:sticky;top:0}
+td:first-child,th:first-child{text-align:right}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;color:#fff}
+.ok{background:var(--bag)}.warn{background:var(--out)}.err{background:var(--bad)}
+.in{color:var(--in)}.out{color:var(--out)}.bag{color:var(--bag)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+button.pri,a.pri{background:var(--in);color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;cursor:pointer;text-decoration:none}
+button.sec{background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+button.sec.on{background:var(--brand);color:#fff}
+input,select{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+label{display:block;margin:8px 0 3px;color:var(--mut);font-size:13px}
+.f2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.scroll{max-height:380px;overflow:auto}
+svg text{font-family:Tahoma,sans-serif}
+.legend span{margin-inline-end:14px;font-size:13px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-inline-end:5px;vertical-align:-1px}
+.note{color:var(--mut);font-size:13px}
+#demoBanner{display:none;background:#fff3cd;color:#7a5b00;padding:8px 20px;text-align:center}
+</style>
+</head>
+<body>
+<div id="demoBanner">⚠ برنامه در حالت نمایشی (دمو) است و داده‌ها شبیه‌سازی شده‌اند. از تب «تنظیمات»، آدرس دوربین را وارد کنید.</div>
+<header>
+  <h1>🛍 پنل شمارش مشتریان فروشگاه</h1>
+  <span id="clock" class="note" style="color:#cfd7e6"></span>
+  <nav>
+    <button data-t="live" class="on">زنده</button>
+    <button data-t="report">گزارش‌ها</button>
+    <button data-t="settings">تنظیمات</button>
+  </nav>
+</header>
+<main>
+
+<section id="live" class="tab on">
+  <div class="grid">
+    <div class="card stat big"><div class="v" id="inside">–</div><div class="l">افراد حاضر در فروشگاه (تخمینی)</div></div>
+    <div class="card stat"><div class="v in" id="tin">–</div><div class="l">ورودی امروز</div></div>
+    <div class="card stat"><div class="v out" id="tout">–</div><div class="l">خروجی امروز</div></div>
+    <div class="card stat"><div class="v bag" id="bin">–</div><div class="l">ورودی با کیف سبز</div></div>
+    <div class="card stat"><div class="v bag" id="bout">–</div><div class="l">خروجی با کیف سبز</div></div>
+    <div class="card stat"><div class="v" id="pct">–</div><div class="l">درصد ورودی‌ها با کیف سبز</div></div>
+  </div>
+  <div class="row">
+    <div class="card">
+      <div class="bar"><b>تصویر دوربین</b><span id="st" class="badge warn">...</span><span class="note" id="stinfo"></span></div>
+      <div class="video"><img id="vid" alt="video"></div>
+      <p class="note">خط زرد، خط شمارش است. عبور از سمت چپِ جهتِ خط (A→B) به سمت راست = «ورود». کادر سبز یعنی کیف سبز تشخیص داده شده.</p>
+    </div>
+    <div class="card">
+      <div class="bar"><b>آخرین رویدادها</b><span class="note" id="today"></span></div>
+      <div class="scroll"><table><thead><tr><th>زمان</th><th>رویداد</th><th>کیف سبز</th></tr></thead><tbody id="recent"></tbody></table></div>
+      <div class="bar" style="margin-top:12px">
+        <button class="sec" id="fixInside">اصلاح تعداد حاضرین</button>
+        <span class="note">اگر شمارنده با واقعیت اختلاف دارد، عدد درست را وارد کنید.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="report" class="tab">
+  <div class="card">
+    <div class="bar">
+      <button class="sec on" data-p="day">روزانه</button>
+      <button class="sec" data-p="week">هفتگی</button>
+      <button class="sec" data-p="month">ماهانه</button>
+      <input type="date" id="rdate">
+      <button class="pri" id="rload">نمایش</button>
+      <a class="pri" id="csv" href="#">دانلود اکسل (CSV)</a>
+    </div>
+    <h3 id="rtitle" style="margin:6px 0"></h3>
+    <div class="grid" id="rtot" style="margin-bottom:12px"></div>
+    <div class="legend"><span><i style="background:var(--in)"></i>ورودی</span><span><i style="background:var(--out)"></i>خروجی</span><span><i style="background:var(--bag)"></i>ورودی با کیف سبز</span></div>
+    <div style="overflow-x:auto"><svg id="chart" height="270" style="min-width:100%"></svg></div>
+    <div class="scroll" style="max-height:420px"><table><thead><tr><th>بازه</th><th>ورودی</th><th>خروجی</th><th>ورودی با کیف سبز</th><th>خروجی با کیف سبز</th><th>حداکثر حضور</th></tr></thead><tbody id="rrows"></tbody></table></div>
+  </div>
+</section>
+
+<section id="settings" class="tab">
+  <div class="card" style="max-width:760px">
+    <h3 style="margin-top:0">تنظیمات دوربین و شمارش</h3>
+    <label>آدرس دوربین (RTSP / شماره وب‌کم / مسیر فایل ویدیو / demo)</label>
+    <input id="c_source" style="width:100%;direction:ltr" placeholder="rtsp://admin:PASSWORD@192.168.1.64:554/Streaming/Channels/101">
+    <h4>خط شمارش (درصد از عرض و ارتفاع تصویر)</h4>
+    <div class="f2">
+      <div><label>A - X</label><input type="number" id="x1" min="0" max="100" step="1"></div>
+      <div><label>A - Y</label><input type="number" id="y1" min="0" max="100" step="1"></div>
+      <div><label>B - X</label><input type="number" id="x2" min="0" max="100" step="1"></div>
+      <div><label>B - Y</label><input type="number" id="y2" min="0" max="100" step="1"></div>
+    </div>
+    <label><input type="checkbox" id="inv"> جهت ورود/خروج را برعکس کن</label>
+    <h4>تشخیص</h4>
+    <div class="f2">
+      <div><label>حساسیت تشخیص انسان (۵ تا ۹۵٪)</label><input type="number" id="conf" min="5" max="95" step="5"></div>
+      <div><label>پردازش در ثانیه (فریم)</label><input type="number" id="pfps" min="1" max="30"></div>
+    </div>
+    <h4>رنگ سبز کیف (HSV)</h4>
+    <div class="f2">
+      <div><label>H حداقل</label><input type="number" id="h_min" min="0" max="179"></div>
+      <div><label>H حداکثر</label><input type="number" id="h_max" min="0" max="179"></div>
+      <div><label>S حداقل</label><input type="number" id="s_min" min="0" max="255"></div>
+      <div><label>V حداقل</label><input type="number" id="v_min" min="0" max="255"></div>
+      <div><label>حداقل سهم پیکسل سبز (٪)</label><input type="number" id="minr" min="0.5" max="50" step="0.5"></div>
+    </div>
+    <p class="note">پس از ذخیره، تغییرات بلافاصله اعمال می‌شود. خط را روی تصویر زنده تب «زنده» کنترل کنید.</p>
+    <div class="bar"><button class="pri" id="save">ذخیره تنظیمات</button><span id="saved" class="note"></span></div>
+  </div>
+</section>
+
+</main>
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const fa=s=>String(s).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+const api=async(u,o)=>{const r=await fetch(u,o);if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||r.status);return r.json()};
+let tab='live', period='day';
+
+$$('nav button').forEach(b=>b.onclick=()=>{
+  tab=b.dataset.t; $$('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  $$('.tab').forEach(s=>s.classList.toggle('on',s.id===tab));
+  $('#vid').src = tab==='live' ? '/video.mjpg' : '';
+  if(tab==='report')loadReport(); if(tab==='settings')loadCfg();
+});
+
+/* ---------- live ---------- */
+async function loadLive(){
+  try{
+    const d=await api('/api/live');
+    $('#demoBanner').style.display=d.status.source_kind==='demo'?'block':'none';
+    $('#inside').textContent=fa(d.inside);
+    $('#tin').textContent=fa(d.today.in); $('#tout').textContent=fa(d.today.out);
+    $('#bin').textContent=fa(d.today.bag_in); $('#bout').textContent=fa(d.today.bag_out);
+    $('#pct').textContent=d.today.in?fa(Math.round(100*d.today.bag_in/d.today.in))+'٪':'–';
+    $('#clock').textContent=d.date+' — '+fa(d.now);
+    $('#today').textContent=d.date;
+    const s=d.status, st=$('#st');
+    st.className='badge '+(s.connected?'ok':'err'); st.textContent=s.connected?'متصل':'قطع';
+    $('#stinfo').textContent=s.connected?`${fa(s.fps)} فریم/ثانیه • ${fa(s.in_frame)} نفر در تصویر • ${s.detector}`:(s.error||'');
+    $('#recent').innerHTML=d.recent.map(e=>`<tr><td>${fa(e.ts.slice(11))}</td><td class="${e.direction}">${e.direction==='in'?'⬇ ورود':'⬆ خروج'}</td><td>${e.green_bag?'<span class="bag">✔</span>':'–'}</td></tr>`).join('')||'<tr><td colspan=3 class=note>هنوز رویدادی ثبت نشده</td></tr>';
+  }catch(e){const st=$('#st');st.className='badge err';st.textContent='خطا در ارتباط با برنامه'}
+}
+$('#fixInside').onclick=async()=>{
+  const v=prompt('تعداد واقعی افراد داخل فروشگاه:'); if(v===null||isNaN(+v))return;
+  await api('/api/reset_inside',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:+v})}); loadLive();
+};
+setInterval(loadLive,1000); loadLive(); $('#vid').src='/video.mjpg';
+
+/* ---------- reports ---------- */
+$('#rdate').value=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+$$('[data-p]').forEach(b=>b.onclick=()=>{period=b.dataset.p;$$('[data-p]').forEach(x=>x.classList.toggle('on',x===b));loadReport()});
+$('#rload').onclick=loadReport; $('#rdate').onchange=loadReport;
+function stat(v,l,c){return `<div class="card stat"><div class="v ${c||''}">${fa(v)}</div><div class="l">${l}</div></div>`}
+async function loadReport(){
+  const q=`period=${period}&date=${$('#rdate').value}`;
+  $('#csv').href='/api/export.csv?'+q;
+  const r=await api('/api/report?'+q), t=r.totals;
+  $('#rtitle').textContent=r.title;
+  $('#rtot').innerHTML=stat(t.in,'کل ورودی','in')+stat(t.out,'کل خروجی','out')+stat(t.bag_in,'ورودی با کیف سبز','bag')+stat(t.bag_out,'خروجی با کیف سبز','bag')+stat(t.peak,'حداکثر حضور همزمان');
+  $('#rrows').innerHTML=r.rows.map(x=>`<tr><td>${fa(x.label)}</td><td>${fa(x.in)}</td><td>${fa(x.out)}</td><td>${fa(x.bag_in)}</td><td>${fa(x.bag_out)}</td><td>${fa(x.peak)}</td></tr>`).join('');
+  chart(r.rows);
+}
+function chart(rows){
+  const svg=$('#chart'), W=Math.max(svg.parentElement.clientWidth, rows.length*44), H=270, pad={l:36,r:8,t:10,b:44};
+  svg.setAttribute('width',W); svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const max=Math.max(1,...rows.map(r=>Math.max(r.in,r.out))), cw=(W-pad.l-pad.r)/rows.length, ph=H-pad.t-pad.b;
+  let g='';
+  for(let i=0;i<=4;i++){const y=pad.t+ph*(1-i/4);g+=`<line x1="${pad.l}" x2="${W-pad.r}" y1="${y}" y2="${y}" stroke="#e3e8ef"/><text x="${pad.l-4}" y="${y+4}" font-size="10" text-anchor="end" fill="#6b7686">${fa(Math.round(max*i/4))}</text>`}
+  rows.forEach((r,i)=>{
+    const x=pad.l+i*cw, bw=Math.min(14,cw/4);
+    [[r.in,'var(--in)',-1.1],[r.out,'var(--out)',0.1]].forEach(([v,c,o])=>{const h=ph*v/max;g+=`<rect x="${x+cw/2+o*bw}" y="${pad.t+ph-h}" width="${bw}" height="${h}" rx="2" fill="${c}"><title>${fa(r.label)}: ${fa(v)}</title></rect>`});
+    const hb=ph*r.bag_in/max; if(r.bag_in)g+=`<rect x="${x+cw/2-1.1*bw}" y="${pad.t+ph-hb}" width="${bw}" height="${hb}" rx="2" fill="var(--bag)"><title>${fa(r.bag_in)}</title></rect>`;
+    const lab=rows.length>24?(i%2?'':fa(r.label)):fa(r.label);
+    g+=`<text x="${x+cw/2}" y="${H-pad.b+14}" font-size="10" text-anchor="middle" fill="#6b7686" transform="rotate(${rows.length>12?35:0} ${x+cw/2} ${H-pad.b+14})">${lab}</text>`;
+  });
+  svg.innerHTML=g;
+}
+
+/* ---------- settings ---------- */
+async function loadCfg(){
+  const c=await api('/api/config');
+  $('#c_source').value=c.source; $('#inv').checked=c.invert_direction;
+  ['x1','y1','x2','y2'].forEach(k=>$('#'+k).value=Math.round(c.line[k]*100));
+  $('#conf').value=Math.round(c.conf*100); $('#pfps').value=c.process_fps;
+  ['h_min','h_max','s_min','v_min'].forEach(k=>$('#'+k).value=c.green[k]);
+  $('#minr').value=(c.green.min_ratio*100).toFixed(1);
+}
+$('#save').onclick=async()=>{
+  const n=id=>+$('#'+id).value;
+  const body={source:$('#c_source').value,invert_direction:$('#inv').checked,conf:n('conf')/100,process_fps:n('pfps'),
+    line:{x1:n('x1')/100,y1:n('y1')/100,x2:n('x2')/100,y2:n('y2')/100},
+    green:{h_min:n('h_min'),h_max:n('h_max'),s_min:n('s_min'),v_min:n('v_min'),min_ratio:n('minr')/100}};
+  try{await api('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    $('#saved').textContent='✔ ذخیره شد'; setTimeout(()=>$('#saved').textContent='',3000)}
+  catch(e){$('#saved').textContent='خطا: '+e.message}
+};
+</script>
+</body>
+</html>
